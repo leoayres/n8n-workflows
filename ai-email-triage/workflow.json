@@ -1,0 +1,213 @@
+{
+  "name": "Blueprint 01 - AI Email Triage & Auto-Draft System (v1.2)",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "q": "-from:me -in:drafts"
+        },
+        "options": {}
+      },
+      "id": "1a2b3c4d-0001",
+      "name": "1. Gmail Trigger (New Email)",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  model: 'gpt-4o-mini',\n  response_format: { type: 'json_object' },\n  messages: [\n    { role: 'system', content: 'You are an executive B2B email triage assistant. Analyze the incoming email and return ONLY a JSON object with keys: category (sales_lead, billing_invoice, support), urgency (high = time-sensitive, a buying signal, or an explicit deadline; otherwise normal), summary (1 sentence), and draft_reply (professional response in the same language as the email).' },\n    { role: 'user', content: 'Subject: ' + ($json.subject || '') + ' | Body: ' + String($json.text || $json.snippet || '').slice(0, 6000) }\n  ]\n}) }}",
+        "options": {}
+      },
+      "id": "1a2b3c4d-0002",
+      "name": "2. AI Classifier & Draft Generator",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ (() => { const r = JSON.parse($json.choices[0].message.content); return (r.category === 'sales_lead' && r.urgency === 'high') ? 'hot_lead' : r.category; })() }}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "hot_lead",
+              "output": 0
+            },
+            {
+              "value2": "billing_invoice",
+              "output": 1
+            }
+          ]
+        },
+        "fallbackOutput": 2
+      },
+      "id": "1a2b3c4d-0003",
+      "name": "3. Route by Priority (Switch)",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        760,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "=Re: {{ $node[\"1. Gmail Trigger (New Email)\"].json.subject }}",
+        "message": "={{ JSON.parse($node[\"2. AI Classifier & Draft Generator\"].json.choices[0].message.content).draft_reply }}",
+        "options": {
+          "threadId": "={{ $node[\"1. Gmail Trigger (New Email)\"].json.threadId }}",
+          "sendTo": "={{ $node[\"1. Gmail Trigger (New Email)\"].json.from.value[0].address }}"
+        },
+        "emailType": "text"
+      },
+      "id": "1a2b3c4d-0004",
+      "name": "4A. Create Gmail Draft Reply",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "channel": "#sales-alerts",
+        "text": "=🔥 *High-priority sales lead!*\n*From:* {{ $node[\"1. Gmail Trigger (New Email)\"].json.from.value[0].address }}\n*Summary:* {{ JSON.parse($node[\"2. AI Classifier & Draft Generator\"].json.choices[0].message.content).summary }}\n*Status:* Draft reply created in the Gmail thread.",
+        "otherOptions": {}
+      },
+      "id": "1a2b3c4d-0005",
+      "name": "4B. Alert Sales Team on Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## SETUP (5 min)\n1. Gmail Trigger → connect your Gmail OAuth2 credential.\n2. AI Classifier → create an **OpenAI API** credential (API key) and select it.\n3. Slack node → connect Slack and change the channel `#sales-alerts` to yours (or delete the node).\n4. Gmail Draft node → select the same Gmail credential.\n5. Activate the workflow and send yourself a test email.\n\nNo credentials are included in this file.",
+        "height": 330,
+        "width": 520,
+        "color": 4
+      },
+      "id": "1a2b3c4d-s1",
+      "name": "Sticky: Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -120,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## ROUTING\nOutput 0: **hot lead** = sales_lead + high urgency → Gmail draft + Slack alert\nOutput 1: billing_invoice → Gmail draft only\nOutput 2: everything else (support, normal leads) → Gmail draft only\n\nDrafts are saved in the original thread. Nothing is sent automatically (human-in-the-loop).",
+        "height": 250,
+        "width": 540,
+        "color": 5
+      },
+      "id": "1a2b3c4d-s2",
+      "name": "Sticky: How routing works",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        700,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## TIPS\n- Edit the system prompt in node 2 to add your own categories, tone, or company details.\n- Polling is every minute; raise it to save executions.\n- Blueprint Systems AI · youtube.com/@BlueprintSystemsAI\n- The email body is JSON-escaped automatically (JSON.stringify), so quotes and line breaks in emails won't break the request.\n- The Gmail Trigger ignores your own drafts and sent replies (search filter `-from:me -in:drafts`), so drafts created by this workflow are never processed again.",
+        "height": 170,
+        "width": 520,
+        "color": 6
+      },
+      "id": "1a2b3c4d-s3",
+      "name": "Sticky: Tips",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        240,
+        480
+      ]
+    }
+  ],
+  "connections": {
+    "1. Gmail Trigger (New Email)": {
+      "main": [
+        [
+          {
+            "node": "2. AI Classifier & Draft Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. AI Classifier & Draft Generator": {
+      "main": [
+        [
+          {
+            "node": "3. Route by Priority (Switch)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. Route by Priority (Switch)": {
+      "main": [
+        [
+          {
+            "node": "4A. Create Gmail Draft Reply",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "4B. Alert Sales Team on Slack",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "4A. Create Gmail Draft Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "4A. Create Gmail Draft Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

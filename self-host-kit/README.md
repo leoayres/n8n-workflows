@@ -1,7 +1,7 @@
 # Self-host n8n: Docker Compose kit
 
 Caddy (automatic HTTPS) + n8n + PostgreSQL on one small VPS. Three containers, one command.
-Video: Blueprint Systems AI - https://www.youtube.com/@BlueprintSystemsAI
+▶️ Video walkthrough: https://www.youtube.com/watch?v=jn7h7wNESLw · Channel: https://www.youtube.com/@BlueprintSystemsAI
 
 | File | What it does |
 |------|--------------|

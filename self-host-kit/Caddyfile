@@ -1,0 +1,7 @@
+{
+	email {$SSL_EMAIL}
+}
+
+{$N8N_FQDN} {
+	reverse_proxy n8n:5678
+}

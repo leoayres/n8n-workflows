@@ -4,12 +4,13 @@ Free, import-ready n8n workflows from the [Blueprint Systems AI](https://www.you
 
 | Workflow | What it does | Video |
 |----------|--------------|-------|
+| [self-host-kit](./self-host-kit) | Self-host n8n on any VPS: Docker Compose + Postgres 17 + Caddy (automatic HTTPS), pinned versions, backup one-liner | [Watch](https://www.youtube.com/watch?v=jn7h7wNESLw) |
 | [ai-email-triage](./ai-email-triage) | GPT-4o-mini classifies every Gmail email, drafts the reply in the thread, alerts Slack only for urgent sales leads | [Watch](https://www.youtube.com/watch?v=JZn3UsmQW4g) |
 
-More coming: self-hosting kit (Docker Compose + Caddy + Postgres), Make vs n8n vs Zapier comparison.
+More coming: Make vs n8n vs Zapier comparison.
 
 ## How to import
-In n8n: **Workflows → Import from file** → choose the `workflow.json`. Then add your own credentials in each node. No workflow here contains credentials or personal IDs.
+Workflows: in n8n, **Workflows → Import from file** → choose the `workflow.json`, then add your own credentials in each node. The self-host kit: follow its README. Nothing here contains credentials, secrets or personal IDs.
 
 ## License
 MIT
